@@ -4,7 +4,7 @@ pipeline {
     }
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
-        maven "M3"
+        maven "auto_maven"
     }
     environment {
         IMAGE = readMavenPom().getArtifactId()
@@ -18,12 +18,20 @@ pipeline {
                sh 'docker rm -f pandaapp || true'
            }
         }
-        stage('Get Code') {
+
+        stage('Pull') {
             steps {
                 // Get some code from a GitHub repository
-                checkout scm
+                // git credentialsId: 'GitHub', url: 'https://github.com/rafalekjan/panda_aplication.git'
+                git branch: 'feature/final', url: 'https://github.com/PandaAcademy/panda_application.git'
             }
         }
+        // stage('Get Code') {
+        //     steps {
+        //         // Get some code from a GitHub repository
+        //         checkout scm
+        //     }
+        // }
         stage('Build and Junit') {
             steps {
                 // Run Maven on a Unix agent.
@@ -47,7 +55,7 @@ pipeline {
         }
         stage('Deploy jar to artifactory') {
             steps {
-                configFileProvider([configFile(fileId: '9d1ed313-ea70-4fa9-9934-7108c53eca75', variable: 'MAVEN_GLOBAL_SETTINGS')]) {
+                configFileProvider([configFile(fileId: 'b5d6585e-173b-45f8-912a-272897d97a12', variable: 'MAVEN_GLOBAL_SETTINGS')]) {
                     sh "mvn -gs $MAVEN_GLOBAL_SETTINGS deploy -Dmaven.test.skip=true -e"
                 }
             } 
