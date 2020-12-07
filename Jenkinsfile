@@ -83,11 +83,11 @@ pipeline {
                 sh 'amsible-playbook -i ./inventory playbook.yml'
                 }
             }
-    post {
+    }
+post {
         always { 
             sh 'docker stop pandaapp'
             deleteDir()
         }
-    }
     }
 }
