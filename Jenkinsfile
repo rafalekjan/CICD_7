@@ -5,10 +5,12 @@ pipeline {
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
         maven "auto_maven"
+        terraform 'Terraform'
     }
     environment {
         IMAGE = readMavenPom().getArtifactId()
         VERSION = readMavenPom().getVersion()
+        ANSIBLE = tool name: 'ansible', type: 'com.cloudbees.jenkins.plugins.customtools.CustomTool'
     }
   
     stages {
@@ -19,19 +21,19 @@ pipeline {
            }
         }
 
-        stage('Pull') {
-            steps {
-                // Get some code from a GitHub repository
-                // git credentialsId: 'GitHub', url: 'https://github.com/rafalekjan/panda_aplication.git'
-                git branch: 'feature/final', url: 'https://github.com/PandaAcademy/panda_application.git'
-            }
-        }
-        // stage('Get Code') {
+        // stage('Pull') {
         //     steps {
         //         // Get some code from a GitHub repository
-        //         checkout scm
+        //         // git credentialsId: 'GitHub', url: 'https://github.com/rafalekjan/panda_aplication.git'
+        //         git branch: 'feature/final', url: 'https://github.com/PandaAcademy/panda_application.git'
         //     }
         // }
+        stage('Get Code') {
+            steps {
+                // Get some code from a GitHub repository
+                checkout scm
+            }
+        }
         stage('Build and Junit') {
             steps {
                 // Run Maven on a Unix agent.
@@ -59,12 +61,33 @@ pipeline {
                     sh "mvn -gs $MAVEN_GLOBAL_SETTINGS deploy -Dmaven.test.skip=true -e"
                 }
             } 
-            post {
-                always { 
-                    sh 'docker stop pandaapp'
-                    deleteDir()
+
+        }
+        
+        stage('Run terra') {
+            steps {
+                dir('infrastructure/terraform'){
+                    sh 'terraform init && terraform apply -auto-approve'
                 }
             }
         }
+        stage('Copy ansible role') {
+            steps {
+                sh 'cp -r infrastructure/ansible/panda/ /etc/ansible/roles/'
+                }
+            }
+        stage('Run ansible') {
+            steps {
+                dir('infrastructure/ansible')
+                sh 'chmod 600 ../klucz_terraform.pem'
+                sh 'amsible-playbook -i ./inventory playbook.yml'
+                }
+            }
+    post {
+        always { 
+            sh 'docker stop pandaapp'
+            deleteDir()
+        }
+    }
     }
 }
